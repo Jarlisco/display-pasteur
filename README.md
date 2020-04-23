@@ -1,6 +1,9 @@
 # hpasteur_displaydriver
 ATmega328PDriver for Hotel Pasteur custom display
 
+
+![affichage.png](https://github.com/Jarlisco/display-pasteur/tree/master/img/affichage.png)
+
 ## Description
 
 This package contains the driver and a basic example of the HotelPasteur display units.
