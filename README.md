@@ -2,7 +2,7 @@
 ATmega328PDriver for Hotel Pasteur custom display
 
 
-![](https://github.com/Jarlisco/display-pasteur/tree/master/img/affichage.png?raw=true)
+![](img/affichage.png?raw=true)
 
 ## Description
 
