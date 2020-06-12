@@ -1,50 +1,49 @@
 #define F_CPU 1000000UL
+//#define F_CPU 16000000UL
 #include <util/delay.h>
 #include <avr/interrupt.h>
-#include <Wire.h>
-
+#include "Wire.h"
 
 #define HPASTEUR_DISPLAY_TESTS
 #include <HpasteurDisplay.h>
 #include <font.h>
+#include <i2c_master.h>
 
-
-namespace hpasteur {
+namespace hpasteur
+{
   /*
    */
-  class HPLetterFont : public HPLetter, public Font {
-  public:
-    /* Constructor */ HPLetterFont(void) : HPLetter(), Font() {}
+  class HPLetterFont : public HPLetter, public Font
+  {
+  private:
+    char lastChar;
 
-    bool write(char chr) {
-      const uint8_t * charTable;
+  public:
+    /* Constructor */ HPLetterFont(void) : HPLetter(), Font() { lastChar = ' '; }
+
+    bool write(char chr)
+    {
+      const uint8_t *charTable;
       size_t char_size;
-      if (getCharacterByChar(chr, charTable, char_size)) {
-        for (size_t idx=0; idx < char_size; idx++) {
+      if (getCharacterByChar(chr, charTable, char_size))
+      {
+        for (size_t idx = 0; idx < char_size; idx++)
+        {
           ledOn(pgm_read_word_near(charTable + idx));
         }
+        lastChar = chr;
         return true;
       }
       return false;
     }
+
+    bool writeLast()
+    {
+      return write(lastChar);
+    }
   };
 
-}
-
-
-//////////////////////////////////////////////////////////
-//-- I2C
-//////////////////////////////////////////////////////////
-
-void i2c_init_master(void){
-  Wire.begin(10);
-  Wire.write(11);
-}
-
-
-//////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////
-
+} // namespace hpasteur
 
 
 //////////////////////////////////////////////////////////
@@ -55,57 +54,57 @@ char message_buffer[256];
 volatile byte pos;
 volatile boolean message_flag = false;
 
-void spi_init_slave (void)
+void spi_init_slave(void)
 {
-  DDRB = (1<<PINB4);  // MISO output - other input           
-  SPCR = (1<<SPE) | (1<<SPIE);    // Enable SPI with interrupt - MODE 0 - MSBFIRST - Serial line 400khz
-  SPDR = 0;           // Set SPI data register to 0
+  DDRB = (1 << PINB4);             // MISO output - other input
+  SPCR = (1 << SPE) | (1 << SPIE); // Enable SPI with interrupt - MODE 0 - MSBFIRST - Serial line 400khz
+  SPDR = 0;                        // Set SPI data register to 0
 }
 
 unsigned char spi_tranceiver(void)
 {
-  while(!(SPSR & (1<<SPIF))); // Wait until data transfer complete
-  return(SPDR);               // Return data
+  while (!(SPSR & (1 << SPIF)))
+    ;            // Wait until data transfer complete
+  return (SPDR); // Return data
 }
 
 // Interruption routine
-ISR(SPI_STC_vect){ 
+ISR(SPI_STC_vect)
+{
   uint8_t spi_data = SPDR;
 
-  if (pos < 256){
+  if (pos < 256)
+  {
     message_buffer[pos++] = spi_data;
     SPDR = spi_data;
   }
 
-  if (spi_data == '\r'){
+  if (spi_data == '\r')
+  {
     message_flag = true;
   }
 }
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 
+// using namespace hpasteur;
 
-using namespace hpasteur;
+// int main(void)
+// {
 
-int main(void)
-{
-  
-  HPLetterFont hpSegment;
-  spi_init_slave();
+//   HPLetterFont hpSegment;
+//   spi_init_slave();
 
+//   while(1)
+//   {
+//     if (message_flag)
+//     {
+//       pos = 0;
+//       message_flag = false;
+//     }
 
-  while(1)
-  {
-    if (message_flag)
-    {
-      pos = 0;
-      message_flag = false;
-    }
-
-
-  }
-}
-
+//   }
+// }
 
 /*
   using namespace hpasteur;
@@ -171,41 +170,60 @@ int main(void)
   }
 */
 
-/*
-  int main(void)
+using namespace hpasteur;
+
+void testAllLetters(HPLetterFont *hpSegment)
+{
+  for (char letter = 'A'; letter <= 'Z'; letter++)
   {
-    //HPLetter gpioSegment;
-    //swapLeds(gpioSegment);
-
-    HPLetterFont hpSegment;
-
-    
-    while (1) {
-
-
-      // for (uint8_t count = 0; count < 2; count++) {
-      //   for (uint8_t index = 0; index < hpSegment.ledCount(); index++) {
-      //     hpSegment.ledOn(index);
-      //   }
-      //   _delay_ms(1000);
-      // }
-
-
-      // hpSegment.ledOn(0);
-      // _delay_ms(1000);
-      // hpSegment.ledOn(1);
-      // _delay_ms(1000);
-
-      // for (char letter='A'; letter <= 'Z'; letter++) {
-      //   for (size_t index = 0; index < 100; index++) {
-      //     hpSegment.write(letter);
-      //   }
-      // }
-      // for (char digit='0'; digit <= '9'; digit++) {
-      //   for (size_t index = 0; index < 100; index++) {
-      //     hpSegment.write(digit);
-      //   }
-      // }
+    for (size_t index = 0; index < 100; index++)
+    {
+      hpSegment->write(letter);
     }
   }
-*/
+  for (char digit = '0'; digit <= '9'; digit++)
+  {
+    for (size_t index = 0; index < 100; index++)
+    {
+      hpSegment->write(digit);
+    }
+  }
+}
+
+#define ADDR 88
+
+int main(void)
+{
+  HPLetterFont hpSegment;
+  testAllLetters(&hpSegment);
+
+  unsigned char ret;
+  i2c_init(); // initialize I2C library
+  
+  int address = 80;
+
+  while (1)
+  {
+    // ret = i2c_start(ADDR + I2C_WRITE);
+    for (address = 1; address < 127; address++)
+    {
+      ret = i2c_start(address + I2C_WRITE);
+      if (ret)
+      {
+        i2c_stop();
+        hpSegment.write('N');
+      }
+      else
+      {
+        //char c = ((uint8_t)i2c_read_ack()) << 8;
+        //c |= i2c_read_nack();
+        i2c_write(address);
+        i2c_stop();
+        //hpSegment.write(c);
+        hpSegment.write('Y');
+      }
+
+      _delay_ms(200);
+    }
+  }
+}
