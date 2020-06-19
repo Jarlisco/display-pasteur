@@ -23,6 +23,8 @@
 #define I2C_WRITE 0x00
 
 void i2c_init(void);
+void i2c_slave_init(uint8_t address);
+void i2c_slave_set_callbacks(void (*recv)(uint8_t), void (*req)());
 uint8_t i2c_start(uint8_t address);
 uint8_t i2c_write(uint8_t data);
 uint8_t i2c_read_ack(void);
@@ -33,4 +35,12 @@ uint8_t i2c_writeReg(uint8_t devaddr, uint8_t regaddr, uint8_t* data, uint16_t l
 uint8_t i2c_readReg(uint8_t devaddr, uint8_t regaddr, uint8_t* data, uint16_t length);
 void i2c_stop(void);
 
+inline void __attribute__((always_inline)) i2c_slave_transmitByte(uint8_t data)
+{
+  TWDR = data;
+}
+
+ISR(TWI_vect);
+
 #endif // I2C_MASTER_H
+

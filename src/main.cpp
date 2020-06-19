@@ -15,11 +15,8 @@ namespace hpasteur
    */
   class HPLetterFont : public HPLetter, public Font
   {
-  private:
-    char lastChar;
-
   public:
-    /* Constructor */ HPLetterFont(void) : HPLetter(), Font() { lastChar = ' '; }
+    /* Constructor */ HPLetterFont(void) : HPLetter(), Font() {}
 
     bool write(char chr)
     {
@@ -31,20 +28,13 @@ namespace hpasteur
         {
           ledOn(pgm_read_word_near(charTable + idx));
         }
-        lastChar = chr;
         return true;
       }
       return false;
     }
-
-    bool writeLast()
-    {
-      return write(lastChar);
-    }
   };
 
 } // namespace hpasteur
-
 
 //////////////////////////////////////////////////////////
 //-- SPI
@@ -190,40 +180,78 @@ void testAllLetters(HPLetterFont *hpSegment)
   }
 }
 
-#define ADDR 88
+HPLetterFont hpSegment;
+char currentChar = ' ';
+uint8_t currentAddr = 0;
+uint8_t lastAddr = 0;
+
+void receiveEvent(uint8_t data)
+{
+  currentChar = data; // receive byte as a character
+}
+
+void requestEvent() {}
 
 int main(void)
 {
-  HPLetterFont hpSegment;
+
   testAllLetters(&hpSegment);
 
   unsigned char ret;
-  i2c_init(); // initialize I2C library
-  
-  int address = 80;
+  i2c_slave_init(0x2c); // initialize I2C library
+  i2c_slave_set_callbacks(receiveEvent, requestEvent);
+  // Wire.begin();
+  // Wire.onReceive(receiveEvent);
+
+  // int address = 80;
+  byte address = 0x58;
 
   while (1)
   {
     // ret = i2c_start(ADDR + I2C_WRITE);
-    for (address = 1; address < 127; address++)
-    {
-      ret = i2c_start(address + I2C_WRITE);
-      if (ret)
-      {
-        i2c_stop();
-        hpSegment.write('N');
-      }
-      else
-      {
-        //char c = ((uint8_t)i2c_read_ack()) << 8;
-        //c |= i2c_read_nack();
-        i2c_write(address);
-        i2c_stop();
-        //hpSegment.write(c);
-        hpSegment.write('Y');
-      }
 
-      _delay_ms(200);
-    }
+
+    // for (address = 1; address < 127; address++)
+    // {
+      
+
+    //   _delay_ms(200);
+    // }
+
+    // ret = i2c_start(address + I2C_WRITE);
+    //   if (ret)
+    //   {
+    //     i2c_stop();
+    //     hpSegment.write('N');
+    //   }
+    //   else
+    //   {
+    //     //char c = ((uint8_t)i2c_read_ack()) << 8;
+    //     //c |= i2c_read_nack();
+    //     byte data[] = {address, 'Y', 'A', 'O'};
+    //     i2c_transmit(address, data, 4);
+    //     i2c_stop();
+    //     //hpSegment.write(c);
+    //     hpSegment.write('Y');
+    //   }
+
+
+    // ret = i2c_start(address + I2C_READ);
+    // if (ret)
+    // {
+    //   i2c_stop();
+    // }
+    // else
+    // {
+    //   char c = ((uint8_t)i2c_read_ack()) << 8;
+    //   c |= i2c_read_nack();
+    //   i2c_stop();
+    //   hpSegment.write(c);
+    // }
+
+    // i2c_stop();
+
+    
+    hpSegment.write(currentChar);
   }
 }
