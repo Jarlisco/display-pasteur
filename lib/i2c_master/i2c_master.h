@@ -31,11 +31,11 @@ uint8_t i2c_read_ack(void);
 uint8_t i2c_read_nack(void);
 uint8_t i2c_transmit(uint8_t address, uint8_t* data, uint16_t length);
 uint8_t i2c_receive(uint8_t address, uint8_t* data, uint16_t length);
-uint8_t i2c_writeReg(uint8_t devaddr, uint8_t regaddr, uint8_t* data, uint16_t length);
-uint8_t i2c_readReg(uint8_t devaddr, uint8_t regaddr, uint8_t* data, uint16_t length);
+uint8_t i2c_write_reg(uint8_t devaddr, uint8_t regaddr, uint8_t* data, uint16_t length);
+uint8_t i2c_read_reg(uint8_t devaddr, uint8_t regaddr, uint8_t* data, uint16_t length);
 void i2c_stop(void);
 
-inline void __attribute__((always_inline)) i2c_slave_transmitByte(uint8_t data)
+inline void __attribute__((always_inline)) i2c_slave_transmit_byte(uint8_t data)
 {
   TWDR = data;
 }

@@ -159,7 +159,7 @@ uint8_t i2c_receive(uint8_t address, uint8_t *data, uint16_t length)
 	return 0;
 }
 
-uint8_t i2c_writeReg(uint8_t devaddr, uint8_t regaddr, uint8_t *data, uint16_t length)
+uint8_t i2c_write_reg(uint8_t devaddr, uint8_t regaddr, uint8_t *data, uint16_t length)
 {
 	if (i2c_start(devaddr | 0x00))
 		return 1;
@@ -177,7 +177,7 @@ uint8_t i2c_writeReg(uint8_t devaddr, uint8_t regaddr, uint8_t *data, uint16_t l
 	return 0;
 }
 
-uint8_t i2c_readReg(uint8_t devaddr, uint8_t regaddr, uint8_t *data, uint16_t length)
+uint8_t i2c_read_reg(uint8_t devaddr, uint8_t regaddr, uint8_t *data, uint16_t length)
 {
 	if (i2c_start(devaddr))
 		return 1;

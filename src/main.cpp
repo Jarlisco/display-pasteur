@@ -2,165 +2,19 @@
 //#define F_CPU 16000000UL
 #include <util/delay.h>
 #include <avr/interrupt.h>
-#include "Wire.h"
+#include <avr/eeprom.h>
 
-#define HPASTEUR_DISPLAY_TESTS
-#include <HpasteurDisplay.h>
-#include <font.h>
+#include "main.h"
 #include <i2c_master.h>
 
-namespace hpasteur
-{
-  /*
-   */
-  class HPLetterFont : public HPLetter, public Font
-  {
-  public:
-    /* Constructor */ HPLetterFont(void) : HPLetter(), Font() {}
-
-    bool write(char chr)
-    {
-      const uint8_t *charTable;
-      size_t char_size;
-      if (getCharacterByChar(chr, charTable, char_size))
-      {
-        for (size_t idx = 0; idx < char_size; idx++)
-        {
-          ledOn(pgm_read_word_near(charTable + idx));
-        }
-        return true;
-      }
-      return false;
-    }
-  };
-
-} // namespace hpasteur
-
-//////////////////////////////////////////////////////////
-//-- SPI
-//////////////////////////////////////////////////////////
-uint8_t spi_data = 0;
-char message_buffer[256];
-volatile byte pos;
-volatile boolean message_flag = false;
-
-void spi_init_slave(void)
-{
-  DDRB = (1 << PINB4);             // MISO output - other input
-  SPCR = (1 << SPE) | (1 << SPIE); // Enable SPI with interrupt - MODE 0 - MSBFIRST - Serial line 400khz
-  SPDR = 0;                        // Set SPI data register to 0
-}
-
-unsigned char spi_tranceiver(void)
-{
-  while (!(SPSR & (1 << SPIF)))
-    ;            // Wait until data transfer complete
-  return (SPDR); // Return data
-}
-
-// Interruption routine
-ISR(SPI_STC_vect)
-{
-  uint8_t spi_data = SPDR;
-
-  if (pos < 256)
-  {
-    message_buffer[pos++] = spi_data;
-    SPDR = spi_data;
-  }
-
-  if (spi_data == '\r')
-  {
-    message_flag = true;
-  }
-}
-//////////////////////////////////////////////////////////
-//////////////////////////////////////////////////////////
-
-// using namespace hpasteur;
-
-// int main(void)
-// {
-
-//   HPLetterFont hpSegment;
-//   spi_init_slave();
-
-//   while(1)
-//   {
-//     if (message_flag)
-//     {
-//       pos = 0;
-//       message_flag = false;
-//     }
-
-//   }
-// }
-
-/*
-  using namespace hpasteur;
-
-  char buffer [50];
-  volatile byte index;
-  volatile boolean flag;
-
-  ISR (SPI_STC_vect) // SPI interrupt routine 
-  { 
-    byte c = SPDR; // read byte from SPI Data Register
-    if (index < sizeof buffer) {
-      buffer[index++] = c; // save data in the next index in the array buff
-      if (c == '\r') //check for the end of the word
-      flag = true;
-    }
-  }
-
-
-
-  int main(void) {
-
-    HPLetterFont hpSegment;
-
-    // Init SPI as Slave
-    SPCR |= _BV(SPE);
-    index = 0;
-    flag = false;
-    SPI.attachInterrupt();
-
-    int char_cursor = 0;
-    int msg_size = 0;
-    sei();
-
-
-
-    while(1){
-
-      if (flag) {
-        hpSegment.ledOn(0);
-        _delay_ms(1000);
-
-        flag = false;
-        msg_size = index;
-        char_cursor = 0;
-        index = 0;
-      }
-
-      if(msg_size == 0){
-        hpSegment.write('X');
-      }else{
-        for (size_t index = 0; index < 100; index++) {
-          hpSegment.write(buffer[char_cursor]);
-        }
-
-        char_cursor++;
-        if(char_cursor >= msg_size)
-          char_cursor = 0;
-      }
-      
-    }
-
-  }
-*/
+#define MODE_ADDR 0
+#define CURRENT_CHAR_ADDR 1
 
 using namespace hpasteur;
+
+HPLetterFont hpSegment;
+char currentChar = 'X';
+mode currentMode = SETUP_MODE;
 
 void testAllLetters(HPLetterFont *hpSegment)
 {
@@ -180,78 +34,160 @@ void testAllLetters(HPLetterFont *hpSegment)
   }
 }
 
-HPLetterFont hpSegment;
-char currentChar = ' ';
-uint8_t currentAddr = 0;
-uint8_t lastAddr = 0;
+//////////////////////////////////////////////////////////
+//-- SPI
+//////////////////////////////////////////////////////////
+char spi_buffer[256];
+volatile uint8_t spi_pos;
+volatile bool spi_received_flag = false;
 
-void receiveEvent(uint8_t data)
+void spi_init_slave(void)
 {
-  currentChar = data; // receive byte as a character
+  cli();
+  DDRB = (1 << PINB4);             // MISO output - other input
+  SPCR = (1 << SPE) | (1 << SPIE); // Enable SPI with interrupt - MODE 0 - MSBFIRST - Serial line 400khz
+  SPDR = 0;                        // Set SPI data register to 0
+  sei();
 }
 
-void requestEvent() {}
+// Interruption routine
+ISR(SPI_STC_vect)
+{
+  uint8_t spi_data = SPDR;
+  currentMode = MASTER_MODE;
+
+  if (spi_pos < 256)
+  {
+    spi_buffer[spi_pos] = spi_data;
+    spi_pos++;
+    SPDR = spi_data;
+  }
+
+  if (spi_data == '\r')
+  {
+    spi_received_flag = true;
+  }
+}
+
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+
+
+//////////////////////////////////////////////////////////
+//-- I2C
+//////////////////////////////////////////////////////////
+
+void i2c_receive_event(uint8_t data)
+{
+  if (currentMode == RUNNING_MODE && hpSegment.write((char)data))
+  {
+    currentChar = data;
+  }
+}
+
+void i2C_request_event() {}
+
+uint8_t get_first_slave_available_addr()
+{
+  i2c_stop();
+  i2c_init();
+  uint8_t i, ret;
+  for (i = 0x08; i < 0x77; i++)
+  {
+    ret = i2c_start(i + I2C_WRITE);
+    if (ret)
+    {
+      i2c_stop();
+      return i;
+    }
+    i2c_stop();
+  }
+  return -1;
+}
+
+uint8_t find_first_found_slave_addr()
+{
+  i2c_stop();
+  i2c_init();
+  uint8_t i, ret;
+  for (i = 0x08; i < 0x77; i++)
+  {
+    ret = i2c_start(i + I2C_WRITE);
+    if (ret == 0)
+    {
+      i2c_stop();
+      return i;
+    }
+    i2c_stop();
+  }
+  return -1;
+}
+
+//////////////////////////////////////////////////////////
+//////////////////////////////////////////////////////////
+
 
 int main(void)
 {
+  uint8_t currentAddr = 0;
+  uint8_t lastAddr = 0;
 
+  spi_init_slave();
   testAllLetters(&hpSegment);
 
-  unsigned char ret;
-  i2c_slave_init(0x2c); // initialize I2C library
-  i2c_slave_set_callbacks(receiveEvent, requestEvent);
-  // Wire.begin();
-  // Wire.onReceive(receiveEvent);
-
-  // int address = 80;
-  byte address = 0x58;
+  // need to test if empty first
+  //currentChar = eeprom_read_word((uint16_t*) CURRENT_CHAR_ADDR);
+  //currentMode = eeprom_read_word((uint16_t*) MODE_ADDR);
 
   while (1)
   {
-    // ret = i2c_start(ADDR + I2C_WRITE);
 
+    switch (currentMode)
+    {
+    case SETUP_MODE:
+      currentChar = 'X';
+      if (hpSegment.getButton(0))
+      {
+        currentAddr = get_first_slave_available_addr();
+        i2c_stop();
+        i2c_slave_init(currentAddr);
+        i2c_slave_set_callbacks(i2c_receive_event, i2C_request_event);
+        currentChar = 'V';
+        currentMode = RUNNING_MODE;
+      }
+      break;
+    case RUNNING_MODE:
+      if (hpSegment.getButton(0))
+      {
+        currentMode = SETUP_MODE;
+      }
+      break;
+    case MASTER_MODE:
+      if (spi_received_flag)
+      {
+        //lastAddr = get_first_slave_available_addr() - 1;
+        lastAddr = find_first_found_slave_addr();
+        i2c_init();
+        uint8_t ret = i2c_start(lastAddr + I2C_WRITE);
+        if (ret == 0)
+        {
+          // uint8_t data[] = {lastAddr, spi_pos};
+          // i2c_transmit(lastAddr, data, 2);
+          i2c_transmit(lastAddr, (uint8_t *)spi_buffer, spi_pos);
+        }
+        i2c_stop();
+        spi_pos = 0;
+        spi_received_flag = false;
 
-    // for (address = 1; address < 127; address++)
-    // {
-      
+        // send data to connected i2c devices
+        // uint8_t i;
+        // for (i = 0x08; i < lastAddr; i++)
+        // {
+        // }
+      }
+      break;
+    }
 
-    //   _delay_ms(200);
-    // }
-
-    // ret = i2c_start(address + I2C_WRITE);
-    //   if (ret)
-    //   {
-    //     i2c_stop();
-    //     hpSegment.write('N');
-    //   }
-    //   else
-    //   {
-    //     //char c = ((uint8_t)i2c_read_ack()) << 8;
-    //     //c |= i2c_read_nack();
-    //     byte data[] = {address, 'Y', 'A', 'O'};
-    //     i2c_transmit(address, data, 4);
-    //     i2c_stop();
-    //     //hpSegment.write(c);
-    //     hpSegment.write('Y');
-    //   }
-
-
-    // ret = i2c_start(address + I2C_READ);
-    // if (ret)
-    // {
-    //   i2c_stop();
-    // }
-    // else
-    // {
-    //   char c = ((uint8_t)i2c_read_ack()) << 8;
-    //   c |= i2c_read_nack();
-    //   i2c_stop();
-    //   hpSegment.write(c);
-    // }
-
-    // i2c_stop();
-
-    
     hpSegment.write(currentChar);
   }
 }
