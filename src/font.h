@@ -1,3 +1,5 @@
+#ifndef FONT_H
+#define FONT_H
 #include <stdlib.h>
 #include <avr/pgmspace.h>
 typedef unsigned char uint8_t;
@@ -7,85 +9,84 @@ namespace hpasteur {
   {
   public:
 
-    static const size_t size_A = 28;
-    static const size_t size_B = 32;
-    static const size_t size_C = 25;
-    static const size_t size_D = 30;
-    static const size_t size_E = 24;
-    static const size_t size_F = 19;
-    static const size_t size_G = 34;
-    static const size_t size_H = 25;
-    static const size_t size_I = 23;
-    static const size_t size_J = 20;
-    static const size_t size_K = 26;
-    static const size_t size_L = 17;
-    static const size_t size_M = 37;
-    static const size_t size_N = 37;
-    static const size_t size_O = 40;
-    static const size_t size_P = 23;
-    static const size_t size_Q = 41;
-    static const size_t size_R = 29;
-    static const size_t size_S = 27;
-    static const size_t size_T = 17;
-    static const size_t size_U = 24;
-    static const size_t size_V = 21;
-    static const size_t size_W = 33;
-    static const size_t size_X = 29;
-    static const size_t size_Y = 20;
-    static const size_t size_Z = 29;
-    static const size_t size_0 = 39;
-    static const size_t size_1 = 18;
-    static const size_t size_2 = 28;
-    static const size_t size_3 = 32;
-    static const size_t size_4 = 18;
-    static const size_t size_5 = 27;
-    static const size_t size_6 = 30;
-    static const size_t size_7 = 27;
-    static const size_t size_8 = 40;
-    static const size_t size_9 = 34;
+	static const size_t size_A = 22;
+	static const size_t size_B = 28;
+	static const size_t size_C = 19;
+	static const size_t size_D = 24;
+	static const size_t size_E = 22;
+	static const size_t size_F = 18;
+	static const size_t size_G = 26;
+	static const size_t size_H = 25;
+	static const size_t size_I = 19;
+	static const size_t size_J = 20;
+	static const size_t size_K = 23;
+	static const size_t size_L = 15;
+	static const size_t size_M = 30;
+	static const size_t size_N = 28;
+	static const size_t size_O = 28;
+	static const size_t size_P = 21;
+	static const size_t size_Q = 31;
+	static const size_t size_R = 26;
+	static const size_t size_S = 28;
+	static const size_t size_T = 20;
+	static const size_t size_U = 22;
+	static const size_t size_V = 18;
+	static const size_t size_W = 26;
+	static const size_t size_X = 25;
+	static const size_t size_Y = 20;
+	static const size_t size_Z = 25;
+	static const size_t size_0 = 37;
+	static const size_t size_1 = 19;
+	static const size_t size_2 = 25;
+	static const size_t size_3 = 30;
+	static const size_t size_4 = 19;
+	static const size_t size_5 = 22;
+	static const size_t size_6 = 28;
+	static const size_t size_7 = 19;
+	static const size_t size_8 = 37;
+	static const size_t size_9 = 32;
 
-    static const uint8_t font_A[28];
-    static const uint8_t font_B[32];
-    static const uint8_t font_C[25];
-    static const uint8_t font_D[30];
-    static const uint8_t font_E[24];
-    static const uint8_t font_F[19];
-    static const uint8_t font_G[34];
-    static const uint8_t font_H[25];
-    static const uint8_t font_I[23];
-    static const uint8_t font_J[20];
-    static const uint8_t font_K[26];
-    static const uint8_t font_L[17];
-    static const uint8_t font_M[37];
-    static const uint8_t font_N[37];
-    static const uint8_t font_O[40];
-    static const uint8_t font_P[23];
-    static const uint8_t font_Q[41];
-    static const uint8_t font_R[29];
-    static const uint8_t font_S[27];
-    static const uint8_t font_T[17];
-    static const uint8_t font_U[24];
-    static const uint8_t font_V[21];
-    static const uint8_t font_W[33];
-    static const uint8_t font_X[29];
-    static const uint8_t font_Y[20];
-    static const uint8_t font_Z[29];
-    static const uint8_t font_0[39];
-    static const uint8_t font_1[18];
-    static const uint8_t font_2[28];
-    static const uint8_t font_3[32];
-    static const uint8_t font_4[18];
-    static const uint8_t font_5[27];
-    static const uint8_t font_6[30];
-    static const uint8_t font_7[27];
-    static const uint8_t font_8[40];
-    static const uint8_t font_9[34];
+	static const uint8_t font_A[22];
+	static const uint8_t font_B[28];
+	static const uint8_t font_C[19];
+	static const uint8_t font_D[24];
+	static const uint8_t font_E[22];
+	static const uint8_t font_F[18];
+	static const uint8_t font_G[26];
+	static const uint8_t font_H[25];
+	static const uint8_t font_I[19];
+	static const uint8_t font_J[20];
+	static const uint8_t font_K[23];
+	static const uint8_t font_L[15];
+	static const uint8_t font_M[30];
+	static const uint8_t font_N[28];
+	static const uint8_t font_O[28];
+	static const uint8_t font_P[21];
+	static const uint8_t font_Q[31];
+	static const uint8_t font_R[26];
+	static const uint8_t font_S[28];
+	static const uint8_t font_T[20];
+	static const uint8_t font_U[22];
+	static const uint8_t font_V[18];
+	static const uint8_t font_W[26];
+	static const uint8_t font_X[25];
+	static const uint8_t font_Y[20];
+	static const uint8_t font_Z[25];
+	static const uint8_t font_0[37];
+	static const uint8_t font_1[19];
+	static const uint8_t font_2[25];
+	static const uint8_t font_3[30];
+	static const uint8_t font_4[19];
+	static const uint8_t font_5[22];
+	static const uint8_t font_6[28];
+	static const uint8_t font_7[19];
+	static const uint8_t font_8[37];
+	static const uint8_t font_9[32];
 
+	static const uint8_t * const characters[36];
+	static const size_t    characters_size[36];
 
-    static const uint8_t * const characters[36];
-    static const size_t    characters_size[36];
-
-    uint8_t maxIndex = 0;
+	uint8_t maxIndex = 0;
     
   public:
 
@@ -117,5 +118,6 @@ namespace hpasteur {
       return true;
     }
   };
-
 }
+
+#endif

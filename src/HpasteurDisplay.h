@@ -25,31 +25,33 @@ namespace hpasteur {
     typedef AvrOuputPin<((uint8_t) &DDRD), ((uint8_t) &PORTD)>  AvrOuputPinD;
     typedef AvrInputPin<((uint8_t) &DDRB), ((uint8_t) &PORTB), ((uint8_t) &PINB)>  AvrInputPinB;
 
-    static const uint8_t GpioSegment_C_Count = 4;
+    static const uint8_t GpioSegment_C_Count = 3;
     static const uint8_t GpioSegment_D_Count = 8;
 
   public:
     /* Constructor */ AVRDisplaySegment(void) : GpioSegment() {
+      // unset disable pull-up 
+      MCUCR &= ~(1 << PUD);
+
       m_count = 0;
-      ((AvrOuputPinD *) &m_gpioTable[0])->reset(2); m_count++;
-      ((AvrOuputPinD *) &m_gpioTable[1])->reset(3); m_count++;
-      ((AvrOuputPinD *) &m_gpioTable[2])->reset(0); m_count++;
-      ((AvrOuputPinC *) &m_gpioTable[3])->reset(3); m_count++;
-      ((AvrOuputPinC *) &m_gpioTable[4])->reset(1); m_count++;
-      ((AvrOuputPinC *) &m_gpioTable[5])->reset(2); m_count++;
-      ((AvrOuputPinC *) &m_gpioTable[6])->reset(0); m_count++;
-      ((AvrOuputPinD *) &m_gpioTable[7])->reset(6); m_count++;
-      ((AvrOuputPinD *) &m_gpioTable[8])->reset(7); m_count++;
-      ((AvrOuputPinD *) &m_gpioTable[9])->reset(5); m_count++;
-      ((AvrOuputPinD *) &m_gpioTable[10])->reset(4); m_count++;
-      ((AvrOuputPinD *) &m_gpioTable[11])->reset(1); m_count++;
+      ((AvrOuputPinD *) &m_gpioTable[m_count])->reset(2); m_count++;
+      ((AvrOuputPinD *) &m_gpioTable[m_count])->reset(3); m_count++;
+      ((AvrOuputPinD *) &m_gpioTable[m_count])->reset(0); m_count++;
+      ((AvrOuputPinD *) &m_gpioTable[m_count])->reset(1); m_count++;
+      ((AvrOuputPinC *) &m_gpioTable[m_count])->reset(1); m_count++;
+      ((AvrOuputPinC *) &m_gpioTable[m_count])->reset(2); m_count++;
+      ((AvrOuputPinC *) &m_gpioTable[m_count])->reset(0); m_count++;
+      ((AvrOuputPinD *) &m_gpioTable[m_count])->reset(6); m_count++;
+      ((AvrOuputPinD *) &m_gpioTable[m_count])->reset(7); m_count++;
+      ((AvrOuputPinD *) &m_gpioTable[m_count])->reset(5); m_count++;
+      ((AvrOuputPinD *) &m_gpioTable[m_count])->reset(4); m_count++;
 
       ((AvrInputPinB *) &m_buttonTable[0])->reset(1);
-      ((AvrInputPinB *) &m_buttonTable[1])->reset(0); m_count++;
+      ((AvrInputPinB *) &m_buttonTable[1])->reset(0);
     }
     OutputPin *       getGPIO(size_t index)                          { return &m_gpioTable[index]; }
     void              setLevel(size_t index, GpioPin::State_t state) { m_gpioTable[index].setLevel(state); }
-    GpioPin::State_t  getButton(size_t index)                        { return m_buttonTable[index & 0x03].getLevel(); }
+    bool  getButton(size_t index)                        { return !m_buttonTable[index & 0x03].getLevel(); }
 
   protected:
     OutputPin m_gpioTable[ GpioSegment_D_Count + GpioSegment_C_Count ];

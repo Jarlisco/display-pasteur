@@ -1,3 +1,8 @@
+/*#if 1
+#include <avr/interrupt.h>
+int main() { MCUCR=0; DDRB = 0; PORTB = (1<<PB1)|(1<<PB0); return 0;}
+#else*/
+
 #define F_CPU 1000000UL
 //#define F_CPU 16000000UL
 #include <util/delay.h>
@@ -14,7 +19,7 @@ using namespace hpasteur;
 
 HPLetterFont hpSegment;
 char currentChar = 'X';
-mode currentMode = SETUP_MODE;
+mode currentMode = RUNNING_MODE;
 
 void testAllLetters(HPLetterFont *hpSegment)
 {
@@ -23,6 +28,7 @@ void testAllLetters(HPLetterFont *hpSegment)
     for (size_t index = 0; index < 100; index++)
     {
       hpSegment->write(letter);
+      //_delay_ms(500);
     }
   }
   for (char digit = '0'; digit <= '9'; digit++)
@@ -30,6 +36,7 @@ void testAllLetters(HPLetterFont *hpSegment)
     for (size_t index = 0; index < 100; index++)
     {
       hpSegment->write(digit);
+      //_delay_ms(500);
     }
   }
 }
@@ -72,20 +79,23 @@ ISR(SPI_STC_vect)
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 
-
 //////////////////////////////////////////////////////////
 //-- I2C
 //////////////////////////////////////////////////////////
 
 void i2c_receive_event(uint8_t data)
 {
-  if (currentMode == RUNNING_MODE && hpSegment.write((char)data))
+  currentChar = 'R';
+  /*if (currentMode == RUNNING_MODE && hpSegment.write((char)data))
   {
     currentChar = data;
-  }
+  }*/
 }
 
-void i2C_request_event() {}
+void i2C_request_event()
+{
+  currentChar = 'E';
+}
 
 uint8_t get_first_slave_available_addr()
 {
@@ -126,26 +136,49 @@ uint8_t find_first_found_slave_addr()
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
 
-
 int main(void)
 {
   uint8_t currentAddr = 0;
   uint8_t lastAddr = 0;
 
-  spi_init_slave();
-  testAllLetters(&hpSegment);
+  //spi_init_slave();
+  //testAllLetters(&hpSegment);
 
   // need to test if empty first
   //currentChar = eeprom_read_word((uint16_t*) CURRENT_CHAR_ADDR);
   //currentMode = eeprom_read_word((uint16_t*) MODE_ADDR);
 
+  if (false)
+  {
+    currentAddr = 0x32;//get_first_slave_available_addr();
+    //i2c_stop();
+    i2c_slave_init(currentAddr);
+    i2c_slave_set_callbacks(i2c_receive_event, i2C_request_event);
+    while (true)
+    {
+      hpSegment.write(currentChar);
+    }
+  }
+
+lastAddr = 0x32;//find_first_found_slave_addr();
+    i2c_init();
   while (1)
   {
+    
+    uint8_t ret = i2c_start(lastAddr + I2C_WRITE);
+    if (ret == 0)
+    {
+      uint8_t data[] = {'A', 'B'};
+      // i2c_transmit(lastAddr, data, 2);
+      //i2c_transmit(lastAddr, (uint8_t *)spi_buffer, spi_pos);
+      //i2c_transmit(lastAddr, (uint8_t *)spi_buffer, spi_pos);
+      i2c_transmit(lastAddr, data, 2);
+    }
+    // i2c_stop();
 
-    switch (currentMode)
+    /*switch (currentMode)
     {
     case SETUP_MODE:
-      currentChar = 'X';
       if (hpSegment.getButton(0))
       {
         currentAddr = get_first_slave_available_addr();
@@ -154,28 +187,35 @@ int main(void)
         i2c_slave_set_callbacks(i2c_receive_event, i2C_request_event);
         currentChar = 'V';
         currentMode = RUNNING_MODE;
+        _delay_ms(200);
       }
       break;
     case RUNNING_MODE:
-      if (hpSegment.getButton(0))
+      if (hpSegment.getButton(0) && currentMode != MASTER_MODE)
       {
         currentMode = SETUP_MODE;
+        currentChar = 'S';
+        _delay_ms(200);
       }
       break;
     case MASTER_MODE:
+      if(currentChar != 'F') currentChar = 'M';
       if (spi_received_flag)
       {
+        currentChar = 'F';
         //lastAddr = get_first_slave_available_addr() - 1;
-        lastAddr = find_first_found_slave_addr();
-        i2c_init();
-        uint8_t ret = i2c_start(lastAddr + I2C_WRITE);
-        if (ret == 0)
-        {
-          // uint8_t data[] = {lastAddr, spi_pos};
-          // i2c_transmit(lastAddr, data, 2);
-          i2c_transmit(lastAddr, (uint8_t *)spi_buffer, spi_pos);
-        }
-        i2c_stop();
+        // lastAddr = find_first_found_slave_addr();
+        // i2c_init();
+        // uint8_t ret = i2c_start(lastAddr + I2C_WRITE);
+        // if (ret == 0)
+        // {
+        //   uint8_t data[] = {'A'};
+        //   // i2c_transmit(lastAddr, data, 2);
+        //   //i2c_transmit(lastAddr, (uint8_t *)spi_buffer, spi_pos);
+        //   //i2c_transmit(lastAddr, (uint8_t *)spi_buffer, spi_pos);
+        //   i2c_transmit(lastAddr, data, 1);
+        // }
+        // i2c_stop();
         spi_pos = 0;
         spi_received_flag = false;
 
@@ -186,8 +226,9 @@ int main(void)
         // }
       }
       break;
-    }
-
+    }*/
     hpSegment.write(currentChar);
   }
 }
+
+//#endif

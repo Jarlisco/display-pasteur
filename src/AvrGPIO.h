@@ -48,15 +48,16 @@ inline GpioPin::State_t getLevel_avrGpio(size_t id, bool activate = false) {
   static volatile uint8_t * const PORT = (volatile uint8_t *) PORT_A;
   static volatile uint8_t * const PIN  = (volatile uint8_t *) PIN_A;
   GpioPin::State_t result;
+
+  if (activate) {
+    (*DDR)  &= ~(1 << id);
+    (*PORT) |=  (1 << id); // Activate pull-up resistor.
+  }
   
   uint8_t state = ((*DDR) & (1 << id)) >> id;
   if (!state) {
     uint8_t level = ((*PIN) & (1 << id)) >> id;
     result = level ? GpioPin::G_HIGH : GpioPin::G_LOW;
-  }
-  else if (activate) {
-    (*DDR)  &= ~(1 << id);
-    (*PORT) |=  (1 << id); // Activate pull-up resistor.
   }
   else result = GpioPin::HIGH_IMPEDANCE;
   return result;

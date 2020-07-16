@@ -35,11 +35,17 @@ static void (*I2C_req)();
 void i2c_init(void)
 {
 	TWBR = (uint8_t)TWBR_val;
+
 }
 
 void i2c_slave_init(uint8_t address)
 {
 	cli();
+	i2c_init();
+	// DDRC  &= ~(1 << 4);
+    // PORTC |=  (1 << 4);
+	// DDRC  &= ~(1 << 5);
+    // PORTC |=  (1 << 5);
 	// load address into TWI address register
 	TWAR = address << 1;
 	// set the TWCR to enable address matching and enable TWI, clear TWINT, enable TWI interrupt

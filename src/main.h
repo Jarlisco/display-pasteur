@@ -25,12 +25,6 @@ namespace hpasteur
       }
       return false;
     }
-
-    // TODO : AWAITING BUTTON FIX
-    GpioPin::State_t  getButton(size_t index)
-    {
-        return GpioPin::G_LOW;
-    }
   };
 
 } // namespace hpasteur
