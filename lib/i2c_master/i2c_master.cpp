@@ -14,38 +14,28 @@
     You should have received a copy of the GNU General Public License
     along with this program.  If not, see <https://www.gnu.org/licenses/>.
 */
-#ifndef F_CPU
-//#define F_CPU 16000000UL
-#define F_CPU 1000000UL
-#endif
-
 #include <avr/io.h>
 #include <util/twi.h>
 #include <avr/interrupt.h>
 
 #include "i2c_master.h"
 
-#define F_SCL 100000UL // SCL frequency
-#define Prescaler 1
-#define TWBR_val ((((F_CPU / F_SCL) / Prescaler) - 16) / 2)
-
 static void (*I2C_recv)(uint8_t);
 static void (*I2C_req)();
 
 void i2c_init(void)
 {
-	TWBR = (uint8_t)TWBR_val;
-
+	TWBR = 12; // set to 400kHz
+	DDRC &= ~(1 << PINC4);
+	PORTC |= (1 << PINC4);
+	DDRC &= ~(1 << PINC5);
+	PORTC |= (1 << PINC5);
 }
 
 void i2c_slave_init(uint8_t address)
 {
 	cli();
 	i2c_init();
-	// DDRC  &= ~(1 << 4);
-    // PORTC |=  (1 << 4);
-	// DDRC  &= ~(1 << 5);
-    // PORTC |=  (1 << 5);
 	// load address into TWI address register
 	TWAR = address << 1;
 	// set the TWCR to enable address matching and enable TWI, clear TWINT, enable TWI interrupt
@@ -55,8 +45,8 @@ void i2c_slave_init(uint8_t address)
 
 void i2c_slave_set_callbacks(void (*recv)(uint8_t), void (*req)())
 {
-  I2C_recv = recv;
-  I2C_req = req;
+	I2C_recv = recv;
+	I2C_req = req;
 }
 
 uint8_t i2c_start(uint8_t address)
@@ -76,7 +66,7 @@ uint8_t i2c_start(uint8_t address)
 	}
 
 	// load slave address into data register
-	TWDR = address;
+	TWDR = address << 1;
 	// start transmission of address
 	TWCR = (1 << TWINT) | (1 << TWEN);
 	// wait for end of transmission
@@ -133,20 +123,36 @@ uint8_t i2c_read_nack(void)
 	return TWDR;
 }
 
-uint8_t i2c_transmit(uint8_t address, uint8_t *data, uint16_t length)
+uint8_t _i2c_transmit_position(uint8_t address, uint8_t *data, uint16_t length, uint16_t position)
 {
 	if (i2c_start(address | I2C_WRITE))
 		return 1;
 
 	for (uint16_t i = 0; i < length; i++)
 	{
-		if (i2c_write(data[i]))
+		if (i2c_write(data[position + i]))
 			return 1;
 	}
 
 	i2c_stop();
 
 	return 0;
+}
+
+// split the message in 32 bytes to make it compatible with Wire.h
+uint8_t i2c_transmit(uint8_t address, uint8_t *data, uint16_t length)
+{
+	uint16_t pos = 0;
+	uint16_t limit_size = 32;
+	for (uint16_t i = 0; i < (length / limit_size); i++)
+	{
+		if (_i2c_transmit_position(address, data, limit_size, pos))
+		{
+			return 1;
+		}
+		pos += limit_size;
+	}
+	return (length % limit_size) == 0 ? 0 : _i2c_transmit_position(address, data, (length % limit_size), pos);
 }
 
 uint8_t i2c_receive(uint8_t address, uint8_t *data, uint16_t length)
@@ -207,39 +213,38 @@ uint8_t i2c_read_reg(uint8_t devaddr, uint8_t regaddr, uint8_t *data, uint16_t l
 void i2c_stop(void)
 {
 	cli();
-	TWAR = 0;
+	//TWAR = 0;
 	// transmit STOP condition
 	TWCR = (1 << TWINT) | (1 << TWEN) | (1 << TWSTO);
 	sei();
 }
 
-
 ISR(TWI_vect)
 {
-  switch(TW_STATUS)
-  {
-    case TW_SR_DATA_ACK:
-      // received data from master, call the receive callback
-      I2C_recv(TWDR); 
-      TWCR = (1<<TWIE) | (1<<TWINT) | (1<<TWEA) | (1<<TWEN);
-      break;
-    case TW_ST_SLA_ACK:
-      // master is requesting data, call the request callback
-      I2C_req();
-      TWCR = (1<<TWIE) | (1<<TWINT) | (1<<TWEA) | (1<<TWEN);
-      break;
-    case TW_ST_DATA_ACK:
-      // master is requesting data, call the request callback
-      I2C_req();
-      TWCR = (1<<TWIE) | (1<<TWINT) | (1<<TWEA) | (1<<TWEN);
-      break;
-    case TW_BUS_ERROR:
-      // some sort of erroneous state, prepare TWI to be readdressed
-      TWCR = 0;
-      TWCR = (1<<TWIE) | (1<<TWINT) | (1<<TWEA) | (1<<TWEN); 
-      break;
-    default:
-      TWCR = (1<<TWIE) | (1<<TWINT) | (1<<TWEA) | (1<<TWEN);
-      break;
-  }
-} 
+	switch (TW_STATUS)
+	{
+	case TW_SR_DATA_ACK:
+		// received data from master, call the receive callback
+		I2C_recv(TWDR);
+		TWCR = (1 << TWIE) | (1 << TWINT) | (1 << TWEA) | (1 << TWEN);
+		break;
+	case TW_ST_SLA_ACK:
+		// master is requesting data, call the request callback
+		I2C_req();
+		TWCR = (1 << TWIE) | (1 << TWINT) | (1 << TWEA) | (1 << TWEN);
+		break;
+	case TW_ST_DATA_ACK:
+		// master is requesting data, call the request callback
+		I2C_req();
+		TWCR = (1 << TWIE) | (1 << TWINT) | (1 << TWEA) | (1 << TWEN);
+		break;
+	case TW_BUS_ERROR:
+		// some sort of erroneous state, prepare TWI to be readdressed
+		TWCR = 0;
+		TWCR = (1 << TWIE) | (1 << TWINT) | (1 << TWEA) | (1 << TWEN);
+		break;
+	default:
+		TWCR = (1 << TWIE) | (1 << TWINT) | (1 << TWEA) | (1 << TWEN);
+		break;
+	}
+}

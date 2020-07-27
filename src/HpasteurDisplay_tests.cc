@@ -1,4 +1,3 @@
-#define F_CPU 1000000UL
 #include <HpasteurDisplay.h>
 #include <util/delay.h>
 

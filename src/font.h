@@ -92,7 +92,7 @@ namespace hpasteur {
 
     /* Constructor */
     Font(/* args */) {
-      maxIndex = ('Z' - 'A' + 1) + ('9' - '0' + 1); // All the capital letters + all the digits
+      maxIndex = ('Z' - 'A' + 1) + ('9' - '0' + 1) + 1; // All the capital letters + all the digits
     }
 
     ~Font() {}
@@ -113,6 +113,11 @@ namespace hpasteur {
         //getCharacterByIndex(chr - '0' + 'Z' + 1, char_ptr, char_size); // NON ? exemple pour chr = '0' => 123
         getCharacterByIndex(chr - '0' + ('Z' - 'A' + 1), char_ptr, char_size); // les 26 lettres en premier puis les chiffres
       }
+	  else if(chr == ' ')
+	  {
+		  getCharacterByIndex(36, char_ptr, char_size);
+	  }
+	  
       else return false; // char is not supported by this font
 
       return true;
