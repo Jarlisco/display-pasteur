@@ -11,58 +11,45 @@ using namespace hpasteur;
 HPLetterFont hpSegment;
 char currentChar = 'X';
 mode currentMode = RUNNING_MODE;
-bool scrolling = false;
 bool display_flag = false;
 char display_buffer[256];
-uint8_t string_size = 0;
-uint8_t i2c_slaves_connected = 0;
 
 //////////////////////////////////////////////////////////
 // TIMER
 //////////////////////////////////////////////////////////
 
+uint8_t timer_counter = 0;
+
 void setup_timer()
 {
   cli();
 
-  //set timer1 interrupt at 5Hz
-  TCCR1A = 0; // set entire TCCR1A register to 0
-  TCCR1B = 0; // same for TCCR1B
-  TCNT1 = 0;  //initialize counter value to 0
-  // set compare match register for 1hz increments
-  OCR1A = 3125; // = (16*10^6) / (5*1024) - 1 (must be <65536)
+  //set timer2 interrupt at 65Hz
+  TCCR2A = 0; // set entire TCCR2A register to 0
+  TCCR2B = 0; // same for TCCR2B
+  TCNT2 = 0;  //initialize counter value to 0
+  // set compare match register for 8khz increments
+  OCR2A = 239; // (16*10^6) / (65*1024) - 1 (must be <256)
   // turn on CTC mode
-  TCCR1B |= (1 << WGM12);
-  // Set CS12 and CS10 bits for 1024 prescaler
-  TCCR1B |= (1 << CS12) | (1 << CS10);
+  TCCR2A |= (1 << WGM21);
+  // 1024 prescaler
+  TCCR2B |= (1 << CS22) | (1 << CS20);
   // enable timer compare interrupt
-  TIMSK1 |= (1 << OCIE1A);
-
-  // //set timer2 interrupt at 150Hz
-  // TCCR2A = 0; // set entire TCCR2A register to 0
-  // TCCR2B = 0; // same for TCCR2B
-  // TCNT2 = 0;  //initialize counter value to 0
-  // // set compare match register for 8khz increments
-  // OCR2A = 50; //249; // = (16*10^6) / (65*1024) - 1 (must be <256)
-  // // turn on CTC mode
-  // TCCR2A |= (1 << WGM21);
-  // // 1024 prescaler
-  // TCCR2B |= (1 << CS22) | (1 << CS20);
-  // // enable timer compare interrupt
-  // TIMSK2 |= (1 << OCIE2A);
+  TIMSK2 |= (1 << OCIE2A);
+  timer_counter = 0;
 
   sei();
 }
 
-ISR(TIMER1_COMPA_vect)
+ISR(TIMER2_COMPA_vect)
 {
-  display_flag = true;
+  timer_counter++;
+  if (timer_counter > 35)
+  {
+    display_flag = true;
+    timer_counter = 0;
+  }
 }
-
-// ISR(TIMER2_COMPA_vect)
-// {
-//   hpSegment.write(currentChar);
-// }
 
 //////////////////////////////////////////////////////////
 //////////////////////////////////////////////////////////
@@ -165,6 +152,10 @@ int main(void)
 {
   spi_init_slave();
   uint8_t currentAddr = 0;
+  bool scrolling = false;
+  bool scrolling_2spaces = false;
+  uint8_t string_size = 0;
+  uint8_t i2c_slaves_connected = 0;
 
   while (true)
   {
@@ -218,6 +209,7 @@ int main(void)
         }
         currentChar = ' ';
         currentMode = MASTER_MODE;
+        //display_flag = true;
         setup_timer();
         _delay_ms(20);
       }
@@ -242,24 +234,35 @@ int main(void)
         string_size = spi_pos - 1;
         spi_pos = 0;
         spi_received_flag = false;
+        scrolling_2spaces = false;
       }
 
-      if (display_flag && string_size > 0)
+      if (display_flag && string_size > 1)
       {
         if (scrolling)
         {
-          while (string_size < i2c_slaves_connected + 2)
+          while (string_size < i2c_slaves_connected)
           {
             display_buffer[string_size] = ' ';
             string_size++;
           }
 
-          char first = display_buffer[0];
-          for (int i = 0; i < string_size; i++)
+          if (!scrolling_2spaces)
           {
-            display_buffer[i] = display_buffer[i + 1];
+            for (uint8_t i = 0; i < 2; i++)
+            {
+              display_buffer[string_size] = ' ';
+              string_size++;
+            }
+            scrolling_2spaces = true;
           }
-          display_buffer[string_size] = first;
+
+          char last = display_buffer[string_size - 1];
+          for (int i = string_size - 1; i > 0; i--)
+          {
+            display_buffer[i] = display_buffer[i - 1];
+          }
+          display_buffer[0] = last;
         }
 
         uint8_t positionMessage = 0;
